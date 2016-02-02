@@ -7,7 +7,7 @@ var googlesearchService = function () {
         
         var squery = querystring.stringify({q: query});
         var page = '';
-            if (offset !== {}) {
+            if (offset) {
                 page = '&start=' + ((parseInt(offset)*10)-9);
             }
 
