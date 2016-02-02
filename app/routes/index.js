@@ -2,6 +2,7 @@
 
 var path = process.cwd();
 var ClickHandler = require(path + '/app/controllers/clickHandler.server.js');
+var mongodb = require('mongodb').MongoClient;
 
 module.exports = function (app, passport) {
 
@@ -54,4 +55,46 @@ module.exports = function (app, passport) {
 		.get(isLoggedIn, clickHandler.getClicks)
 		.post(isLoggedIn, clickHandler.addClick)
 		.delete(isLoggedIn, clickHandler.resetClicks);
+		
+	app.route('/api/latest/imagesearch/')
+		.get(function (req, res) {
+			var url = process.env.MONGO_URI;
+			mongodb.connect(url, function (err, db) {
+				var collection = db.collection('searches');
+				var cursor = collection.find({}, {_id: 0, whenint: 0});
+				
+				cursor.sort({whenint: -1});
+				cursor.limit(10);
+				
+				cursor.toArray(function (err, searches) {
+					res.json(searches);
+				});
+			});
+		});
+		
+	app.route('/api/imagesearch/:keywords')
+		.get(function (req, res) {
+			var searchService = require('../services/googlesearchService')();
+			var keywords = req.params.keywords;
+			var offset = req.query.offset;
+			
+			var url = process.env.MONGO_URI;
+			mongodb.connect(url, function (err, db) {
+				var collection = db.collection('searches');
+				var dateint = Date.now();
+				var date = new Date(dateint);
+				
+				collection.insertOne({
+					keywords: req.params.keywords,
+					when: date.toUTCString(),
+					whenint: dateint
+				}, function (err, input) {
+					searchService.search(keywords, offset,
+						function (err, results) {
+							res.json(results);
+						});
+				});
+			});
+		});
+	
 };
